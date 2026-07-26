@@ -13,13 +13,36 @@ pipeline {
 
     stages {
 
+        stage('Clean Workspace') {
+            steps {
+                sh '''
+                echo "========== Cleaning Workspace =========="
+                rm -rf *
+                '''
+            }
+        }
+
+        stage('Checkout Source Code') {
+            steps {
+
+                checkout scm
+
+                sh '''
+                echo "========== Repository Checked Out =========="
+
+                pwd
+                ls -ltr
+                '''
+            }
+        }
+
         stage('Verify Docker') {
             steps {
                 sh '''
-                echo "===== Docker Version ====="
+                echo "========== Docker Version =========="
                 docker --version
 
-                echo "===== Docker Compose Version ====="
+                echo "========== Docker Compose Version =========="
                 docker compose version
                 '''
             }
@@ -28,6 +51,8 @@ pipeline {
         stage('Docker Hub Login') {
             steps {
                 sh '''
+                echo "========== Docker Hub Login =========="
+
                 echo "$DOCKER_PSW" | docker login \
                 -u "$DOCKER_USR" \
                 --password-stdin
@@ -35,22 +60,17 @@ pipeline {
             }
         }
 
-        stage('Pull Docker Image') {
+        stage('Create .env File') {
             steps {
                 sh '''
-                echo "Pulling Latest Image..."
+                echo "========== Creating .env File =========="
 
-                docker pull $DOCKER_IMAGE:$IMAGE_TAG
-                '''
-            }
-        }
+                cd /mnt/my-project/CD
 
-        stage('Stop Existing Containers') {
-            steps {
-                sh '''
-                cd /mnt/my-project
+                echo "DOCKER_IMAGE=$DOCKER_IMAGE" > .env
+                echo "IMAGE_TAG=$IMAGE_TAG" >> .env
 
-                docker compose down || true
+                cat .env
                 '''
             }
         }
@@ -58,7 +78,13 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 sh '''
-                cd /mnt/my-project
+                echo "========== Deploying Application =========="
+
+                cd /mnt/my-project/CD
+
+                docker compose down || true
+
+                docker compose pull
 
                 docker compose up -d
                 '''
@@ -68,11 +94,13 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 sh '''
-                echo "Running Containers"
+                echo "========== Running Containers =========="
 
                 docker ps
 
-                echo "Docker Compose Status"
+                echo "========== Docker Compose Status =========="
+
+                cd /mnt/my-project/CD
 
                 docker compose ps
                 '''
@@ -84,21 +112,19 @@ pipeline {
     post {
 
         success {
-            echo "======================================="
-            echo "Application Deployed Successfully"
-            echo "======================================="
+            echo "========================================="
+            echo "CD Pipeline Completed Successfully"
+            echo "========================================="
         }
 
         failure {
-            echo "======================================="
-            echo "Deployment Failed"
-            echo "======================================="
+            echo "========================================="
+            echo "CD Pipeline Failed"
+            echo "========================================="
         }
 
         always {
             sh 'docker logout || true'
         }
-
     }
-
 }
