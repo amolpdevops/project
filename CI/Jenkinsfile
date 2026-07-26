@@ -96,7 +96,7 @@ pipeline {
                 sh '''
                 echo "========== Building Docker Image =========="
 
-                docker build -t java-webapp:1.0 .
+                docker build -t amolpdevops/java-app:1.0 .
 
                 docker images
                 '''
@@ -120,7 +120,7 @@ pipeline {
                 sh '''
                 echo "========== Pushing Docker Image =========="
 
-                docker push java-webapp:1.0
+                docker push amolpdevops/java-app:1.0
 
                 echo "Docker Image Pushed Successfully"
                 '''
