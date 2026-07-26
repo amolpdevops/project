@@ -1,0 +1,104 @@
+pipeline {
+
+    agent {
+        node {
+            label 'slave-1'
+            customWorkspace '/mnt/my-project'
+        }
+    }
+
+    environment {
+        DOCKER = credentials('docker_creds')
+    }
+
+    stages {
+
+        stage('Verify Docker') {
+            steps {
+                sh '''
+                echo "===== Docker Version ====="
+                docker --version
+
+                echo "===== Docker Compose Version ====="
+                docker compose version
+                '''
+            }
+        }
+
+        stage('Docker Hub Login') {
+            steps {
+                sh '''
+                echo "$DOCKER_PSW" | docker login \
+                -u "$DOCKER_USR" \
+                --password-stdin
+                '''
+            }
+        }
+
+        stage('Pull Docker Image') {
+            steps {
+                sh '''
+                echo "Pulling Latest Image..."
+
+                docker pull $DOCKER_IMAGE:$IMAGE_TAG
+                '''
+            }
+        }
+
+        stage('Stop Existing Containers') {
+            steps {
+                sh '''
+                cd /mnt/my-project
+
+                docker compose down || true
+                '''
+            }
+        }
+
+        stage('Deploy Application') {
+            steps {
+                sh '''
+                cd /mnt/my-project
+
+                docker compose up -d
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                echo "Running Containers"
+
+                docker ps
+
+                echo "Docker Compose Status"
+
+                docker compose ps
+                '''
+            }
+        }
+
+    }
+
+    post {
+
+        success {
+            echo "======================================="
+            echo "Application Deployed Successfully"
+            echo "======================================="
+        }
+
+        failure {
+            echo "======================================="
+            echo "Deployment Failed"
+            echo "======================================="
+        }
+
+        always {
+            sh 'docker logout || true'
+        }
+
+    }
+
+}
