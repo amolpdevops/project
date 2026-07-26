@@ -24,13 +24,9 @@ pipeline {
 
         stage('Checkout Source Code') {
             steps {
+				checkout scm
+				
                 sh '''
-                echo "========== Checkout Source Code =========="
-
-                git clone -b $GIT_BRANCH $GIT_URL .
-
-                echo "Repository Cloned Successfully"
-
                 pwd
                 ls -ltr
                 '''
