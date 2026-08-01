@@ -67,7 +67,7 @@ pipeline {
 
                 cd /mnt/my-project/CD
 
-                echo "DOCKER_IMAGE=$DOCKER_IMAGE" > .env
+                echo "IMAGE_NAME=$IMAGE_NAME" > .env
                 echo "IMAGE_TAG=$IMAGE_TAG" >> .env
 
                 cat .env
