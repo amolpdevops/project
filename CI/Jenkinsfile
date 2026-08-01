@@ -1,150 +1,163 @@
 pipeline {
 
-    agent {
-        node {
-			label 'built-in'
-            customWorkspace '/mnt/my-project'
+agent {
+    node {
+        label 'built-in'
+        customWorkspace '/mnt/my-project'
+    }
+}
+
+environment {
+
+    DOCKER = credentials('docker_creds')
+
+    // Docker Image Details
+    IMAGE_NAME = "amolpdevops/java-app"
+    IMAGE_TAG  = "1.0"
+}
+
+stages {
+
+    stage('Clean Workspace') {
+        steps {
+            sh '''
+            echo "===== Cleaning Workspace ====="
+
+            rm -rf *
+            '''
         }
     }
 
-    environment {
-        DOCKER = credentials('docker_creds')
-    }
-
-    stages {
-
-		stage('Clean Workspace') {
-			steps {
-				sh '''
-				echo "===== Cleaning Workspace ====="
-
-				rm -rf *
-				'''
-			}
-		}
-
-        stage('Checkout Source Code') {
-            steps {
-				checkout scm
-				
-                sh '''
-                pwd
-                ls -ltr
-                '''
-            }
-        }
-
-        stage('Verify Installed Tools') {
-            steps {
-                sh '''
-                echo "========== Java Version =========="
-                java -version
-
-                echo "========== Maven Version =========="
-                mvn -version
-
-                echo "========== Git Version =========="
-                git --version
-
-                echo "========== Docker Version =========="
-                docker --version
-
-                echo "========== AWS CLI Version =========="
-                aws --version
-                '''
-            }
-        }
-
-        stage('Build Application') {
-            steps {
-                sh '''
-                echo "========== Building Java Application =========="
-
-                mvn clean install
-
-                echo "Build Completed Successfully"
-                '''
-            }
-        }
-
-        stage('Verify WAR File') {
-            steps {
-                sh '''
-                echo "========== Generated WAR File =========="
-
-                ls -lh target/
-
-                find target -name "*.war"
-                '''
-            }
-        }
-
-        stage('Upload WAR to S3') {
-            steps {
-                sh '''
-                echo "========== Uploading WAR to S3 =========="
-
-                aws s3 cp target/*.war s3://test-bucket-15956/maven_repo/
-
-                echo "WAR Uploaded Successfully"
-                '''
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh '''
-                echo "========== Building Docker Image =========="
-
-                docker build -t amolpdevops/java-app:2.0 .
-
-                docker images
-                '''
-            }
-        }
-
-        stage('Docker Hub Login') {
-            steps {
-                sh '''
-                echo "========== Docker Hub Login =========="
-
-                echo "$DOCKER_PSW" | docker login \
-                -u "$DOCKER_USR" \
-                --password-stdin
-                '''
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                sh '''
-                echo "========== Pushing Docker Image =========="
-
-                docker push amolpdevops/java-app:1.0
-
-                echo "Docker Image Pushed Successfully"
-                '''
-            }
-        }
-
-    }
-
-    post {
-
-        success {
-            echo "=========================================="
-            echo "CI Pipeline Completed Successfully"
-            echo "=========================================="
-        }
-
-        failure {
-            echo "=========================================="
-            echo "CI Pipeline Failed"
-            echo "=========================================="
-        }
-
-        always {
-            sh 'docker logout || true'
+    stage('Checkout Source Code') {
+        steps {
+            checkout scm
+            
+            sh '''
+            pwd
+            ls -ltr
+            '''
         }
     }
+
+    stage('Verify Installed Tools') {
+        steps {
+            sh '''
+            echo "========== Java Version =========="
+            java -version
+
+            echo "========== Maven Version =========="
+            mvn -version
+
+            echo "========== Git Version =========="
+            git --version
+
+            echo "========== Docker Version =========="
+            docker --version
+
+            echo "========== AWS CLI Version =========="
+            aws --version
+            '''
+        }
+    }
+
+    stage('Build Application') {
+        steps {
+            sh '''
+            echo "========== Building Java Application =========="
+
+            mvn clean install
+
+            echo "Build Completed Successfully"
+            '''
+        }
+    }
+
+    stage('Verify WAR File') {
+        steps {
+            sh '''
+            echo "========== Generated WAR File =========="
+
+            ls -lh target/
+
+            find target -name "*.war"
+            '''
+        }
+    }
+
+    stage('Upload WAR to S3') {
+        steps {
+            sh '''
+            echo "========== Uploading WAR to S3 =========="
+
+            aws s3 cp target/*.war s3://test-bucket-15956/maven_repo/
+
+            echo "WAR Uploaded Successfully"
+            '''
+        }
+    }
+
+
+    stage('Build Docker Image') {
+        steps {
+            sh '''
+            echo "========== Building Docker Image =========="
+
+            docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+            echo "Docker Image Created Successfully"
+
+            docker images
+            '''
+        }
+    }
+
+
+    stage('Docker Hub Login') {
+        steps {
+            sh '''
+            echo "========== Docker Hub Login =========="
+
+            echo "$DOCKER_PSW" | docker login \
+            -u "$DOCKER_USR" \
+            --password-stdin
+            '''
+        }
+    }
+
+
+    stage('Push Docker Image') {
+        steps {
+            sh '''
+            echo "========== Pushing Docker Image =========="
+
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+
+            echo "Docker Image Pushed Successfully"
+            '''
+        }
+    }
+
+}
+
+
+post {
+
+    success {
+        echo "=========================================="
+        echo "CI Pipeline Completed Successfully"
+        echo "Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+        echo "=========================================="
+    }
+
+    failure {
+        echo "=========================================="
+        echo "CI Pipeline Failed"
+        echo "=========================================="
+    }
+
+    always {
+        sh 'docker logout || true'
+    }
+}
+
 }
