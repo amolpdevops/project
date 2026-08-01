@@ -96,7 +96,7 @@ pipeline {
                 sh '''
                 echo "========== Building Docker Image =========="
 
-                docker build -t amolpdevops/java-app:1.0 .
+                docker build -t amolpdevops/java-app:2.0 .
 
                 docker images
                 '''
